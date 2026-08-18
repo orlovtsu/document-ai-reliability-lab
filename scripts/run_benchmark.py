@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from document_ai.quality import assess_batch, field_metrics
+from document_ai.reporting import build_report
 from document_ai.synthetic import SyntheticConfig, make_batch
 
 
@@ -13,6 +14,7 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--rows", type=int, default=500)
     parser.add_argument("--corruption-rate", type=float, default=0.18)
+    parser.add_argument("--report", action="store_true")
     args = parser.parse_args()
     truth, extracted = make_batch(
         SyntheticConfig(seed=args.seed, rows=args.rows), args.corruption_rate
@@ -23,6 +25,12 @@ def main() -> None:
     for metric in field_metrics(truth, extracted):
         print(f"  {metric['field']}: {metric['exact_match_rate']:.3f}")
     print(f"quality_counts={quality_counts}")
+    if args.report:
+        build_report(
+            SyntheticConfig(seed=args.seed, rows=args.rows),
+            args.corruption_rate,
+        )
+        print("report=reports/REPORT.md")
 
 
 if __name__ == "__main__":

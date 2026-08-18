@@ -5,6 +5,7 @@ import pandas as pd
 
 
 FIELDS = ["document_type", "document_date", "reference_id", "total_amount", "line_count"]
+CORRUPTION_SCENARIOS = ["clean", "missing_date", "date_shift", "identifier_typo", "amount_noise", "duplicate_row", "mixed"]
 
 
 @dataclass(frozen=True)
@@ -36,31 +37,55 @@ def _drop_character(value: str, rng: np.random.Generator) -> str:
 
 
 def corrupt_documents(
-    truth: pd.DataFrame, seed: int = 42, corruption_rate: float = 0.18
+    truth: pd.DataFrame,
+    seed: int = 42,
+    corruption_rate: float = 0.18,
+    scenario: str = "mixed",
 ) -> pd.DataFrame:
+    if scenario not in CORRUPTION_SCENARIOS:
+        raise ValueError(f"unknown corruption scenario: {scenario}")
     rng = np.random.default_rng(seed + 1000)
     extracted = truth.drop(columns=["document_id"]).copy()
     extracted["document_id"] = truth["document_id"]
     extracted["source_row"] = np.arange(len(truth))
+    extracted["corruption_scenario"] = scenario
+    for field in FIELDS:
+        extracted[f"confidence_{field}"] = 0.98
 
-    for field in ["document_date", "reference_id"]:
+    date_scenarios = {"date_shift", "mixed"}
+    identifier_scenarios = {"identifier_typo", "mixed"}
+    amount_scenarios = {"amount_noise", "mixed"}
+    if scenario in date_scenarios:
+        field = "document_date"
         mask = rng.random(len(extracted)) < corruption_rate
-        extracted.loc[mask, field] = extracted.loc[mask, field].map(
-            lambda value: _drop_character(value, rng)
+        extracted.loc[mask, field] = extracted.loc[mask, field].map(lambda value: _drop_character(value, rng))
+        extracted.loc[mask, "confidence_document_date"] = 0.55
+    if scenario in {"missing_date", "mixed"}:
+        missing_mask = rng.random(len(extracted)) < corruption_rate / 2
+        extracted.loc[missing_mask, "document_date"] = ""
+        extracted.loc[missing_mask, "confidence_document_date"] = 0.1
+    if scenario in identifier_scenarios:
+        mask = rng.random(len(extracted)) < corruption_rate
+        extracted.loc[mask, "reference_id"] = extracted.loc[mask, "reference_id"].map(lambda value: _drop_character(value, rng))
+        extracted.loc[mask, "confidence_reference_id"] = 0.55
+    if scenario in amount_scenarios:
+        amount_mask = rng.random(len(extracted)) < corruption_rate
+        extracted.loc[amount_mask, "total_amount"] = np.round(
+            extracted.loc[amount_mask, "total_amount"] * rng.uniform(0.85, 1.15, amount_mask.sum()), 2
         )
-    missing_mask = rng.random(len(extracted)) < corruption_rate / 2
-    extracted.loc[missing_mask, "document_date"] = ""
-    amount_mask = rng.random(len(extracted)) < corruption_rate
-    extracted.loc[amount_mask, "total_amount"] = np.round(
-        extracted.loc[amount_mask, "total_amount"] * rng.uniform(0.85, 1.15, amount_mask.sum()), 2
-    )
-    duplicate_count = max(1, int(len(extracted) * corruption_rate / 8)) if len(extracted) else 0
+        extracted.loc[amount_mask, "confidence_total_amount"] = 0.6
+    duplicate_count = max(1, int(len(extracted) * corruption_rate / 8)) if len(extracted) and scenario in {"duplicate_row", "mixed"} else 0
     if duplicate_count:
-        extracted = pd.concat([extracted, extracted.sample(duplicate_count, random_state=seed)], ignore_index=True)
+        duplicates = extracted.sample(duplicate_count, random_state=seed).copy()
+        duplicates["is_duplicate"] = True
+        extracted["is_duplicate"] = False
+        extracted = pd.concat([extracted, duplicates], ignore_index=True)
+    else:
+        extracted["is_duplicate"] = False
     return extracted
 
 
-def make_batch(config: SyntheticConfig = SyntheticConfig(), corruption_rate: float = 0.18):
+def make_batch(config: SyntheticConfig = SyntheticConfig(), corruption_rate: float = 0.18, scenario: str = "mixed"):
     truth = generate_ground_truth(config)
-    extracted = corrupt_documents(truth, config.seed, corruption_rate)
+    extracted = corrupt_documents(truth, config.seed, corruption_rate, scenario)
     return truth, extracted

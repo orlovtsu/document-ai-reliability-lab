@@ -26,3 +26,6 @@ class BatchResponse(BaseModel):
     document_count: int
     field_metrics: list[FieldMetric]
     quality_counts: dict[str, int]
+    policy_version: str
+    duplicate_rate: float
+    mean_confidence: float

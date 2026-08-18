@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
 
 from document_ai.api import app
-from document_ai.quality import assess_batch, field_metrics
-from document_ai.synthetic import SyntheticConfig, generate_ground_truth, make_batch
+from document_ai.quality import assess_batch, confidence_metrics, field_metrics
+from document_ai.reporting import run_scenarios
+from document_ai.repair import repair_documents
+from document_ai.synthetic import CORRUPTION_SCENARIOS, SyntheticConfig, generate_ground_truth, make_batch
 
 
 client = TestClient(app)
@@ -37,9 +39,32 @@ def test_benchmark_api():
     assert response.status_code == 200
     assert response.json()["document_count"] == 500
     assert response.json()["field_metrics"]
+    assert response.json()["policy_version"] == "quality-policy-1.0"
 
 
 def test_truth_schema_has_no_external_data():
     truth = generate_ground_truth(SyntheticConfig(seed=1, rows=5))
     assert truth["document_id"].str.startswith("doc-").all()
     assert truth["reference_id"].str.startswith("REF-").all()
+
+
+def test_confidence_metrics_are_bounded():
+    truth, extracted = make_batch(SyntheticConfig(seed=5, rows=100))
+    metrics = confidence_metrics(truth, extracted)
+    assert metrics
+    assert all(0 <= metric["accuracy"] <= 1 for metric in metrics)
+
+
+def test_all_corruption_scenarios_are_reproducible_and_reportable():
+    results = run_scenarios(SyntheticConfig(seed=3, rows=80), corruption_rate=0.25)
+    assert set(results["scenario"]) == set(CORRUPTION_SCENARIOS)
+    assert results[["date_accuracy", "reference_accuracy", "amount_accuracy"]].apply(
+        lambda column: column.between(0, 1).all()
+    ).all()
+
+
+def test_repair_normalizes_format_without_inventing_missing_values():
+    truth, extracted = make_batch(SyntheticConfig(seed=4, rows=20), scenario="missing_date")
+    repaired = repair_documents(extracted)
+    assert (repaired.loc[repaired["document_date"] == "", "document_date"] == "").all()
+    assert "repair_actions" in repaired

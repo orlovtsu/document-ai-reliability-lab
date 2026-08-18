@@ -2,6 +2,8 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from .policy import QualityPolicy
+
 
 @dataclass(frozen=True)
 class QualityDecision:
@@ -10,12 +12,14 @@ class QualityDecision:
     reasons: list[str]
 
 
-def assess_row(row: pd.Series) -> QualityDecision:
+def assess_row(row: pd.Series, policy: QualityPolicy = QualityPolicy()) -> QualityDecision:
     reasons: list[str] = []
     score = 1.0
-    if not row.get("document_date"):
+    date_value = row.get("document_date")
+    parsed_date = pd.to_datetime(date_value, format="%Y-%m-%d", errors="coerce") if date_value else pd.NaT
+    if pd.isna(parsed_date):
         score -= 0.35
-        reasons.append("missing_date")
+        reasons.append("invalid_or_missing_date")
     if not isinstance(row.get("reference_id"), str) or not row.get("reference_id", "").startswith("REF-"):
         score -= 0.3
         reasons.append("invalid_reference")
@@ -26,13 +30,18 @@ def assess_row(row: pd.Series) -> QualityDecision:
     if row.get("line_count", 0) < 1:
         score -= 0.1
         reasons.append("invalid_line_count")
+    if bool(row.get("is_duplicate", False)):
+        reasons.append("duplicate_row")
+        if policy.duplicate_action == "reject":
+            return QualityDecision("reject", 0.0, reasons)
+        score -= 0.2
     score = max(0.0, score)
-    status = "accept" if score >= 0.85 else "review" if score >= 0.55 else "reject"
+    status = "accept" if score >= policy.accept_threshold else "review" if score >= policy.review_threshold else "reject"
     return QualityDecision(status, score, reasons)
 
 
-def assess_batch(extracted: pd.DataFrame) -> tuple[pd.DataFrame, dict[str, int]]:
-    decisions = [assess_row(row) for _, row in extracted.iterrows()]
+def assess_batch(extracted: pd.DataFrame, policy: QualityPolicy = QualityPolicy()) -> tuple[pd.DataFrame, dict[str, int]]:
+    decisions = [assess_row(row, policy) for _, row in extracted.iterrows()]
     result = extracted.copy()
     result["quality_status"] = [decision.status for decision in decisions]
     result["quality_score"] = [decision.quality_score for decision in decisions]
@@ -64,3 +73,37 @@ def field_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> list[dict]:
         }
     )
     return metrics
+
+
+def batch_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> dict:
+    metrics = {metric["field"]: metric["exact_match_rate"] for metric in field_metrics(truth, extracted)}
+    duplicate_count = int(extracted.get("is_duplicate", pd.Series(dtype=bool)).sum())
+    return {
+        "field_metrics": metrics,
+        "duplicate_rate": duplicate_count / len(extracted) if len(extracted) else 0.0,
+        "mean_confidence": float(
+            extracted[[column for column in extracted.columns if column.startswith("confidence_")]].mean().mean()
+        ) if len(extracted) else 0.0,
+        "rows": int(len(extracted)),
+    }
+
+
+def confidence_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> list[dict]:
+    joined = extracted.drop_duplicates("document_id").merge(
+        truth, on="document_id", suffixes=("_pred", "_true"), how="inner"
+    )
+    records = []
+    for field in ["document_type", "document_date", "reference_id", "line_count", "total_amount"]:
+        confidence = joined[f"confidence_{field}"]
+        predicted = joined[f"{field}_pred"]
+        expected = joined[f"{field}_true"]
+        correct = (predicted - expected).abs() <= 0.01 if field == "total_amount" else predicted == expected
+        bands = pd.cut(confidence, [-0.01, 0.7, 0.9, 1.01], labels=["low", "medium", "high"])
+        for band, group in pd.DataFrame({"band": bands, "correct": correct}).groupby("band", observed=False):
+            records.append({
+                "field": field,
+                "confidence_band": str(band),
+                "rows": int(len(group)),
+                "accuracy": float(group["correct"].mean()) if len(group) else 0.0,
+            })
+    return records

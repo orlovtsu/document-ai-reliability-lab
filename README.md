@@ -16,6 +16,9 @@ It contains no real documents, organizations, accounts, products, or production 
 - controlled corruption of dates, identifiers, amounts, and duplicate rows;
 - field-level exact-match and tolerance-aware metrics;
 - quality gates that distinguish accepted, review, and rejected records;
+- conservative repair/normalization with explicit repair actions;
+- versioned quality policy and confidence-band analysis;
+- scenario-level Markdown/PNG benchmark report;
 - explicit failure taxonomy;
 - typed FastAPI endpoint;
 - tests, Docker, and CI.
@@ -39,6 +42,16 @@ python scripts/run_benchmark.py --seed 42 --rows 500
 ```
 
 The benchmark prints field-level extraction metrics and quality-gate outcomes. All values are synthetic and intended to demonstrate evaluation methodology only.
+
+Generate the detailed scenario report with charts:
+
+```powershell
+python scripts/run_benchmark.py --report
+```
+
+Open `reports/REPORT.md` for field accuracy, routing outcomes, confidence analysis, duplicate rate, and scenario comparisons.
+
+The committed report compares clean, missing-date, date-shift, identifier-typo, amount-noise, duplicate-row, and mixed-failure scenarios.
 
 ## Scope and limitations
 
