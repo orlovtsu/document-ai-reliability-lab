@@ -5,6 +5,7 @@ import pandas as pd
 
 from .policy import QualityPolicy
 from .quality import assess_batch, batch_metrics, field_metrics
+from .pipeline import run_cascade
 from .repair import repair_documents
 from .synthetic import CORRUPTION_SCENARIOS, SyntheticConfig, make_batch
 
@@ -39,6 +40,7 @@ def build_report(
 ) -> pd.DataFrame:
     output_dir.mkdir(parents=True, exist_ok=True)
     results = run_scenarios(config, corruption_rate)
+    cascade = run_cascade(config, corruption_rate)
     figure, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
     results.plot.bar(x="scenario", y=["date_accuracy", "reference_accuracy", "amount_accuracy"], ax=axes[0, 0])
     axes[0, 0].set_ylim(0, 1)
@@ -89,10 +91,25 @@ All rows are synthetic. The benchmark compares named corruption scenarios after 
 - Scenario-level metrics make failure modes visible instead of hiding them in one aggregate score.
 - Confidence is diagnostic and should be calibrated against field correctness before production use.
 
+## Extraction cascade
+
+The synthetic cascade routes low-quality or incomplete primary extraction through a fallback stage and reports the operational trade-offs.
+
+| Metric | Value |
+| --- | ---: |
+| Fallback rate | {cascade.summary['fallback_rate']:.3f} |
+| Page coverage rate | {cascade.summary['page_coverage_rate']:.3f} |
+| Mean latency (ms) | {cascade.summary['mean_latency_ms']:.1f} |
+| Total cost units | {cascade.summary['total_cost_units']:.1f} |
+| Reconciled rate | {cascade.summary['reconciliation_rate']:.3f} |
+
+The fallback is intentionally more expensive and slower. It is used only when coverage or quality signals justify the operational cost.
+
 ## Limitations
 
 This is a synthetic reliability laboratory, not an OCR engine or real-world fairness/performance claim. Production extension points include layout-aware extraction, confidence calibration, human-review cost measurement, source drift monitoring, and representative document governance.
 """
     (output_dir / "REPORT.md").write_text(report, encoding="utf-8")
     results.to_json(output_dir / "scenario_matrix.json", orient="records", indent=2)
+    pd.DataFrame([cascade.summary]).to_json(output_dir / "cascade_summary.json", orient="records", indent=2)
     return results

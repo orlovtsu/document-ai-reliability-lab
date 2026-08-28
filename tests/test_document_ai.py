@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from document_ai.api import app
 from document_ai.quality import assess_batch, confidence_metrics, field_metrics
 from document_ai.reporting import run_scenarios
+from document_ai.pipeline import run_cascade
 from document_ai.repair import repair_documents
 from document_ai.synthetic import CORRUPTION_SCENARIOS, SyntheticConfig, generate_ground_truth, make_batch
 
@@ -29,7 +30,8 @@ def test_field_metrics_are_bounded():
     truth, extracted = make_batch(SyntheticConfig(seed=42, rows=100))
     metrics = field_metrics(truth, extracted)
     assert {metric["field"] for metric in metrics} == {
-        "document_type", "document_date", "reference_id", "line_count", "total_amount"
+        "document_type", "document_date", "reference_id", "line_count",
+        "subtotal", "tax_amount", "total_amount"
     }
     assert all(0 <= metric["exact_match_rate"] <= 1 for metric in metrics)
 
@@ -53,6 +55,14 @@ def test_confidence_metrics_are_bounded():
     metrics = confidence_metrics(truth, extracted)
     assert metrics
     assert all(0 <= metric["accuracy"] <= 1 for metric in metrics)
+
+
+def test_cascade_reports_coverage_fallback_latency_and_cost():
+    result = run_cascade(SyntheticConfig(seed=9, rows=100))
+    assert result.summary["fallback_rate"] > 0
+    assert 0 < result.summary["page_coverage_rate"] <= 1
+    assert result.summary["mean_latency_ms"] >= 180
+    assert result.summary["total_cost_units"] > 0
 
 
 def test_all_corruption_scenarios_are_reproducible_and_reportable():

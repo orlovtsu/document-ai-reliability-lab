@@ -50,8 +50,8 @@
     "amount_accuracy":0.808,
     "duplicate_rate":0.0,
     "mean_confidence":0.965408,
-    "accept_rate":1.0,
-    "review_rate":0.0,
+    "accept_rate":0.808,
+    "review_rate":0.192,
     "reject_rate":0.0
   },
   {
@@ -72,8 +72,8 @@
     "amount_accuracy":0.824,
     "duplicate_rate":0.0215264188,
     "mean_confidence":0.9244227006,
-    "accept_rate":0.7279843444,
-    "review_rate":0.2563600783,
-    "reject_rate":0.0156555773
+    "accept_rate":0.6046966732,
+    "review_rate":0.3326810176,
+    "reject_rate":0.0626223092
   }
 ]

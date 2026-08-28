@@ -1,0 +1,24 @@
+[
+  {
+    "field_metrics":{
+      "document_type":1.0,
+      "document_date":0.97,
+      "reference_id":0.94,
+      "line_count":1.0,
+      "subtotal":1.0,
+      "tax_amount":1.0,
+      "total_amount":1.0
+    },
+    "duplicate_rate":0.0,
+    "mean_confidence":0.9724266145,
+    "rows":511,
+    "reconciliation_rate":1.0,
+    "fallback_rate":0.4481409002,
+    "page_coverage_rate":0.9876060013,
+    "mean_latency_ms":525.0684931507,
+    "total_cost_units":1312.5,
+    "accept_count":511,
+    "review_count":0,
+    "reject_count":0
+  }
+]

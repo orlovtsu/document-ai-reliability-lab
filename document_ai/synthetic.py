@@ -17,16 +17,19 @@ class SyntheticConfig:
 def generate_ground_truth(config: SyntheticConfig = SyntheticConfig()) -> pd.DataFrame:
     rng = np.random.default_rng(config.seed)
     dates = pd.date_range("2025-01-01", periods=config.rows, freq="D")
-    return pd.DataFrame(
+    truth = pd.DataFrame(
         {
             "document_id": [f"doc-{index:06d}" for index in range(config.rows)],
             "document_type": rng.choice(["statement", "invoice", "form"], config.rows),
             "document_date": dates.strftime("%Y-%m-%d"),
             "reference_id": [f"REF-{rng.integers(100000, 999999)}" for _ in range(config.rows)],
-            "total_amount": np.round(rng.lognormal(4.7, 0.55, config.rows), 2),
+            "subtotal": np.round(rng.lognormal(4.55, 0.55, config.rows), 2),
+            "tax_amount": np.round(rng.lognormal(2.8, 0.45, config.rows), 2),
             "line_count": rng.integers(1, 18, config.rows),
         }
     )
+    truth["total_amount"] = np.round(truth["subtotal"] + truth["tax_amount"], 2)
+    return truth
 
 
 def _drop_character(value: str, rng: np.random.Generator) -> str:

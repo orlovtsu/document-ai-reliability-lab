@@ -19,6 +19,7 @@ It contains no real documents, organizations, accounts, products, or production 
 - conservative repair/normalization with explicit repair actions;
 - versioned quality policy and confidence-band analysis;
 - scenario-level Markdown/PNG benchmark report;
+- extractor cascade with fallback, page coverage, reconciliation, latency, and cost metrics;
 - explicit failure taxonomy;
 - typed FastAPI endpoint;
 - tests, Docker, and CI.
@@ -50,6 +51,8 @@ python scripts/run_benchmark.py --report
 ```
 
 Open `reports/REPORT.md` for field accuracy, routing outcomes, confidence analysis, duplicate rate, and scenario comparisons.
+
+The report also includes the synthetic extractor cascade: the primary stage is cheap and fast, while the fallback stage is slower and more expensive but improves coverage and quality when the primary quality gate fails.
 
 The committed report compares clean, missing-date, date-shift, identifier-typo, amount-noise, duplicate-row, and mixed-failure scenarios.
 

@@ -27,6 +27,12 @@ def assess_row(row: pd.Series, policy: QualityPolicy = QualityPolicy()) -> Quali
     if not isinstance(amount, (int, float)) or amount <= 0:
         score -= 0.25
         reasons.append("invalid_amount")
+    subtotal = row.get("subtotal")
+    tax = row.get("tax_amount")
+    if isinstance(subtotal, (int, float)) and isinstance(tax, (int, float)) and isinstance(amount, (int, float)):
+        if abs(subtotal + tax - amount) > 0.01:
+            score -= 0.3
+            reasons.append("reconciliation_failure")
     if row.get("line_count", 0) < 1:
         score -= 0.1
         reasons.append("invalid_line_count")
@@ -54,7 +60,7 @@ def field_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> list[dict]:
         truth, on="document_id", suffixes=("_pred", "_true"), how="inner"
     )
     metrics = []
-    for field in ["document_type", "document_date", "reference_id", "line_count"]:
+    for field in ["document_type", "document_date", "reference_id", "line_count", "subtotal", "tax_amount"]:
         metrics.append(
             {
                 "field": field,
@@ -85,6 +91,9 @@ def batch_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> dict:
             extracted[[column for column in extracted.columns if column.startswith("confidence_")]].mean().mean()
         ) if len(extracted) else 0.0,
         "rows": int(len(extracted)),
+        "reconciliation_rate": float(
+            ((extracted["subtotal"] + extracted["tax_amount"] - extracted["total_amount"]).abs() <= 0.01).mean()
+        ) if len(extracted) else 0.0,
     }
 
 
