@@ -1,0 +1,34 @@
+[
+  {
+    "fallback_threshold":0.55,
+    "fallback_rate":0.2544031311,
+    "mean_latency_ms":375.8904109589,
+    "total_cost_units":966.0,
+    "reconciliation_rate":0.9647749511,
+    "accept_rate":0.7436399217
+  },
+  {
+    "fallback_threshold":0.7,
+    "fallback_rate":0.3953033268,
+    "mean_latency_ms":484.3835616438,
+    "total_cost_units":1218.0,
+    "reconciliation_rate":0.9569471624,
+    "accept_rate":0.85518591
+  },
+  {
+    "fallback_threshold":0.85,
+    "fallback_rate":0.4481409002,
+    "mean_latency_ms":525.0684931507,
+    "total_cost_units":1312.5,
+    "reconciliation_rate":0.9510763209,
+    "accept_rate":0.8962818004
+  },
+  {
+    "fallback_threshold":0.95,
+    "fallback_rate":0.4481409002,
+    "mean_latency_ms":525.0684931507,
+    "total_cost_units":1312.5,
+    "reconciliation_rate":0.9510763209,
+    "accept_rate":0.8962818004
+  }
+]

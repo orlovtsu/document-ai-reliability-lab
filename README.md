@@ -20,6 +20,8 @@ It contains no real documents, organizations, accounts, products, or production 
 - versioned quality policy and confidence-band analysis;
 - scenario-level Markdown/PNG benchmark report;
 - extractor cascade with fallback, page coverage, reconciliation, latency, and cost metrics;
+- explicit extractor protocol with cost/latency provider profiles;
+- confidence reliability and cost-quality frontier reports;
 - explicit failure taxonomy;
 - typed FastAPI endpoint;
 - tests, Docker, and CI.
@@ -51,6 +53,8 @@ python scripts/run_benchmark.py --report
 ```
 
 Open `reports/REPORT.md` for field accuracy, routing outcomes, confidence analysis, duplicate rate, and scenario comparisons.
+
+Additional committed artifacts include `reports/operational_frontier.png`, `reports/cost_quality_sweep.json`, `reports/confidence_reliability.json`, and `reports/cascade_summary.json`.
 
 The report also includes the synthetic extractor cascade: the primary stage is cheap and fast, while the fallback stage is slower and more expensive but improves coverage and quality when the primary quality gate fails.
 

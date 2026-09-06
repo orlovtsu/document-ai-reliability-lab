@@ -40,9 +40,46 @@ The synthetic cascade routes low-quality or incomplete primary extraction throug
 | Page coverage rate | 0.988 |
 | Mean latency (ms) | 525.1 |
 | Total cost units | 1312.5 |
-| Reconciled rate | 1.000 |
+| Reconciled rate | 0.951 |
 
 The fallback is intentionally more expensive and slower. It is used only when coverage or quality signals justify the operational cost.
+
+## Operational frontier
+
+![Operational frontier](operational_frontier.png)
+
+The left panel shows cost versus reconciliation quality as the fallback threshold changes. The right panel compares reported confidence bands with observed field accuracy. Confidence is a claim to calibrate, not a guarantee.
+
+### Cost-quality sweep
+
+| Fallback threshold | Fallback rate | Mean latency (ms) | Cost units | Reconciled rate | Accept rate |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.55 | 0.254 | 375.9 | 966.0 | 0.965 | 0.744 |
+| 0.70 | 0.395 | 484.4 | 1218.0 | 0.957 | 0.855 |
+| 0.85 | 0.448 | 525.1 | 1312.5 | 0.951 | 0.896 |
+| 0.95 | 0.448 | 525.1 | 1312.5 | 0.951 | 0.896 |
+
+### Confidence reliability
+
+Confidence is evaluated against actual field correctness by confidence band:
+
+| Field | Band | Rows | Accuracy |
+| --- | --- | ---: | ---: |
+| document_type | low | 0 | 0.000 |
+| document_type | medium | 0 | 0.000 |
+| document_type | high | 500 | 1.000 |
+| document_date | low | 124 | 0.000 |
+| document_date | medium | 0 | 0.000 |
+| document_date | high | 376 | 1.000 |
+| reference_id | low | 86 | 0.000 |
+| reference_id | medium | 0 | 0.000 |
+| reference_id | high | 414 | 1.000 |
+| line_count | low | 0 | 0.000 |
+| line_count | medium | 0 | 0.000 |
+| line_count | high | 500 | 1.000 |
+| total_amount | low | 88 | 0.000 |
+| total_amount | medium | 0 | 0.000 |
+| total_amount | high | 412 | 1.000 |
 
 ## Limitations
 

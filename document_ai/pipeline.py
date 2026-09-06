@@ -5,7 +5,8 @@ import pandas as pd
 from .policy import QualityPolicy
 from .quality import assess_batch, batch_metrics
 from .repair import repair_documents
-from .synthetic import SyntheticConfig, make_batch
+from .extractors import FALLBACK_EXTRACTOR, PRIMARY_EXTRACTOR
+from .synthetic import SyntheticConfig, generate_ground_truth
 
 
 @dataclass(frozen=True)
@@ -15,8 +16,8 @@ class ProviderProfile:
     cost_units: float
 
 
-PRIMARY = ProviderProfile("primary", latency_ms=180, cost_units=1.0)
-FALLBACK = ProviderProfile("fallback", latency_ms=950, cost_units=4.5)
+PRIMARY = ProviderProfile(PRIMARY_EXTRACTOR.name, PRIMARY_EXTRACTOR.latency_ms, PRIMARY_EXTRACTOR.cost_units)
+FALLBACK = ProviderProfile(FALLBACK_EXTRACTOR.name, FALLBACK_EXTRACTOR.latency_ms, FALLBACK_EXTRACTOR.cost_units)
 
 
 @dataclass(frozen=True)
@@ -39,19 +40,21 @@ def run_cascade(
     config: SyntheticConfig = SyntheticConfig(),
     corruption_rate: float = 0.18,
     policy: QualityPolicy = QualityPolicy(),
+    fallback_score_threshold: float = 0.85,
 ) -> PipelineResult:
-    truth, primary = make_batch(config, corruption_rate, scenario="mixed")
+    truth = generate_ground_truth(config)
+    primary = PRIMARY_EXTRACTOR.extract(truth, config)
     primary = _page_coverage(primary, config.seed)
     primary_assessed, _ = assess_batch(primary, policy)
     fallback_mask = (
         (primary_assessed["coverage_rate"] < 1.0)
-        | (primary_assessed["quality_status"] != "accept")
+        | (primary_assessed["quality_score"] < fallback_score_threshold)
         | primary_assessed["quality_reasons"].map(lambda reasons: "reconciliation_failure" in reasons)
     )
-    # Fallback is a synthetic clean extraction with a small residual amount error.
-    _, fallback = make_batch(config, corruption_rate=0.03, scenario="clean")
+    # Fallback is better, but still imperfect: real fallback stages can fail too.
+    fallback = FALLBACK_EXTRACTOR.extract(truth, config)
     fallback = _page_coverage(fallback, config.seed + 17)
-    fallback_by_id = fallback.set_index("document_id")
+    fallback_by_id = fallback.drop_duplicates("document_id").set_index("document_id")
     chosen = primary.copy()
     chosen["stage_used"] = PRIMARY.name
     chosen["fallback_reason"] = ""

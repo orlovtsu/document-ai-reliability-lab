@@ -2,7 +2,8 @@ from fastapi.testclient import TestClient
 
 from document_ai.api import app
 from document_ai.quality import assess_batch, confidence_metrics, field_metrics
-from document_ai.reporting import run_scenarios
+from document_ai.extractors import FALLBACK_EXTRACTOR, PRIMARY_EXTRACTOR
+from document_ai.reporting import run_cost_quality_sweep, run_scenarios
 from document_ai.pipeline import run_cascade
 from document_ai.repair import repair_documents
 from document_ai.synthetic import CORRUPTION_SCENARIOS, SyntheticConfig, generate_ground_truth, make_batch
@@ -63,6 +64,18 @@ def test_cascade_reports_coverage_fallback_latency_and_cost():
     assert 0 < result.summary["page_coverage_rate"] <= 1
     assert result.summary["mean_latency_ms"] >= 180
     assert result.summary["total_cost_units"] > 0
+
+
+def test_extractor_protocol_profiles_have_explicit_operational_tradeoff():
+    assert PRIMARY_EXTRACTOR.latency_ms < FALLBACK_EXTRACTOR.latency_ms
+    assert PRIMARY_EXTRACTOR.cost_units < FALLBACK_EXTRACTOR.cost_units
+
+
+def test_cost_quality_sweep_is_reproducible():
+    sweep = run_cost_quality_sweep(SyntheticConfig(seed=9, rows=100))
+    assert len(sweep) == 4
+    assert sweep["fallback_rate"].between(0, 1).all()
+    assert sweep["total_cost_units"].gt(0).all()
 
 
 def test_all_corruption_scenarios_are_reproducible_and_reportable():
