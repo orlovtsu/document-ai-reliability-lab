@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from document_ai.api import app
 from document_ai.quality import assess_batch, confidence_metrics, field_metrics
 from document_ai.extractors import FALLBACK_EXTRACTOR, PRIMARY_EXTRACTOR
+from document_ai.cloud_adapters import AzureDocumentIntelligenceAdapter, OpenAIVisionFallbackAdapter
 from document_ai.reporting import run_cost_quality_sweep, run_scenarios
 from document_ai.pipeline import run_cascade
 from document_ai.repair import repair_documents
@@ -76,6 +77,26 @@ def test_cost_quality_sweep_is_reproducible():
     assert len(sweep) == 4
     assert sweep["fallback_rate"].between(0, 1).all()
     assert sweep["total_cost_units"].gt(0).all()
+
+
+def test_cloud_adapters_are_disabled_by_default_and_mockable():
+    payload = lambda _: {
+        "fields": {"document_date": "2025-01-01"},
+        "confidence": {"document_date": 0.93},
+        "pages_seen": 2,
+    }
+    for adapter in (AzureDocumentIntelligenceAdapter(), OpenAIVisionFallbackAdapter()):
+        try:
+            adapter.extract(b"synthetic")
+        except RuntimeError as error:
+            assert "disabled" in str(error)
+        else:
+            raise AssertionError("cloud adapter should be disabled without a backend")
+    result = AzureDocumentIntelligenceAdapter(backend=payload).extract(b"synthetic")
+    fallback = OpenAIVisionFallbackAdapter(backend=payload).extract(b"synthetic")
+    assert result.provider == "azure-document-intelligence"
+    assert fallback.provider == "openai-vision-fallback"
+    assert result.fields["document_date"] == "2025-01-01"
 
 
 def test_all_corruption_scenarios_are_reproducible_and_reportable():

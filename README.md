@@ -21,6 +21,7 @@ It contains no real documents, organizations, accounts, products, or production 
 - scenario-level Markdown/PNG benchmark report;
 - extractor cascade with fallback, page coverage, reconciliation, latency, and cost metrics;
 - explicit extractor protocol with cost/latency provider profiles;
+- optional Azure Document Intelligence and OpenAI vision fallback adapter boundaries;
 - confidence reliability and cost-quality frontier reports;
 - explicit failure taxonomy;
 - typed FastAPI endpoint;
@@ -57,6 +58,8 @@ Open `reports/REPORT.md` for field accuracy, routing outcomes, confidence analys
 Additional committed artifacts include `reports/operational_frontier.png`, `reports/cost_quality_sweep.json`, `reports/confidence_reliability.json`, and `reports/cascade_summary.json`.
 
 The report also includes the synthetic extractor cascade: the primary stage is cheap and fast, while the fallback stage is slower and more expensive but improves coverage and quality when the primary quality gate fails.
+
+See [provider adapter architecture](docs/provider-adapters.md) for the cloud integration boundary. Cloud calls are disabled by default and tested through dependency injection.
 
 The committed report compares clean, missing-date, date-shift, identifier-typo, amount-noise, duplicate-row, and mixed-failure scenarios.
 

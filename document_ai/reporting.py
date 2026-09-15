@@ -62,36 +62,75 @@ def build_report(
     truth, raw_extracted = make_batch(config, corruption_rate, scenario="mixed")
     repaired_extracted = repair_documents(raw_extracted)
     confidence_table = pd.DataFrame(confidence_metrics(truth, repaired_extracted))
-    figure, axes = plt.subplots(2, 2, figsize=(13, 9), constrained_layout=True)
-    results.plot.bar(x="scenario", y=["date_accuracy", "reference_accuracy", "amount_accuracy"], ax=axes[0, 0])
-    axes[0, 0].set_ylim(0, 1)
-    axes[0, 0].set_title("Field accuracy by corruption scenario")
-    axes[0, 0].tick_params(axis="x", rotation=30)
-    results.plot.bar(x="scenario", y=["accept_rate", "review_rate", "reject_rate"], ax=axes[0, 1])
-    axes[0, 1].set_ylim(0, 1)
-    axes[0, 1].set_title("Quality routing by scenario")
-    axes[0, 1].tick_params(axis="x", rotation=30)
-    results.plot.line(x="mean_confidence", y="amount_accuracy", marker="o", ax=axes[1, 0])
-    axes[1, 0].set_xlim(0, 1)
-    axes[1, 0].set_ylim(0, 1)
-    axes[1, 0].set_title("Confidence versus amount accuracy")
-    results.plot.bar(x="scenario", y="duplicate_rate", ax=axes[1, 1], color="#c44e52")
-    axes[1, 1].set_ylim(0, 1)
-    axes[1, 1].set_title("Duplicate rate")
-    axes[1, 1].tick_params(axis="x", rotation=30)
+    plt.rcParams.update({"font.size": 10, "axes.titlesize": 13, "axes.labelsize": 10})
+    colors = {"date_accuracy": "#2f6f9f", "reference_accuracy": "#e07a3f", "amount_accuracy": "#4c956c"}
+    scenarios = results["scenario"].str.replace("_", " ").str.title()
+    figure, axes = plt.subplots(2, 2, figsize=(15, 10), constrained_layout=True)
+
+    y = range(len(results))
+    for offset, field in zip((-0.22, 0, 0.22), colors):
+        bars = axes[0, 0].barh([value + offset for value in y], results[field], height=0.2, color=colors[field], label=field.replace("_", " ").title())
+        axes[0, 0].bar_label(bars, fmt="%.2f", padding=3, fontsize=8)
+    axes[0, 0].set_yticks(list(y), scenarios)
+    axes[0, 0].set_xlim(0, 1.12)
+    axes[0, 0].set_title("Field accuracy by failure scenario", loc="left", fontweight="bold")
+    axes[0, 0].set_xlabel("Exact / tolerance-aware accuracy")
+    axes[0, 0].legend(frameon=False, ncol=3, fontsize=8)
+    axes[0, 0].grid(axis="x", alpha=0.2)
+
+    left = pd.Series(0.0, index=results.index)
+    routing_colors = [("accept_rate", "#4c956c"), ("review_rate", "#e6a23c"), ("reject_rate", "#c94c4c")]
+    for field, color in routing_colors:
+        bars = axes[0, 1].barh(scenarios, results[field], left=left, color=color, label=field.replace("_rate", "").title())
+        left += results[field]
+    axes[0, 1].set_xlim(0, 1)
+    axes[0, 1].set_title("Quality routing outcome", loc="left", fontweight="bold")
+    axes[0, 1].set_xlabel("Share of extracted rows")
+    axes[0, 1].legend(frameon=False, ncol=3, fontsize=8)
+    axes[0, 1].grid(axis="x", alpha=0.2)
+
+    comparison_y = range(len(results))
+    confidence_bars = axes[1, 0].barh([value - 0.14 for value in comparison_y], results["mean_confidence"], height=0.25, color="#345995", label="reported confidence")
+    accuracy_bars = axes[1, 0].barh([value + 0.14 for value in comparison_y], results["amount_accuracy"], height=0.25, color="#e07a3f", label="observed amount accuracy")
+    axes[1, 0].bar_label(confidence_bars, fmt="%.2f", padding=3, fontsize=8)
+    axes[1, 0].bar_label(accuracy_bars, fmt="%.2f", padding=3, fontsize=8)
+    axes[1, 0].set_yticks(list(comparison_y), scenarios)
+    axes[1, 0].set_xlim(0.7, 1.08)
+    axes[1, 0].set_title("Confidence versus observed accuracy", loc="left", fontweight="bold")
+    axes[1, 0].set_xlabel("Rate")
+    axes[1, 0].legend(frameon=False, fontsize=8)
+    axes[1, 0].grid(axis="x", alpha=0.2)
+
+    bars = axes[1, 1].barh(scenarios, results["duplicate_rate"], color="#c94c4c")
+    axes[1, 1].bar_label(bars, fmt="%.3f", padding=3, fontsize=8)
+    axes[1, 1].set_xlim(0, max(0.05, results["duplicate_rate"].max() * 1.35))
+    axes[1, 1].set_title("Duplicate exposure", loc="left", fontweight="bold")
+    axes[1, 1].set_xlabel("Duplicate row share")
+    axes[1, 1].grid(axis="x", alpha=0.2)
+
+    for axis in axes.flat:
+        axis.spines[["top", "right"]].set_visible(False)
     figure.savefig(output_dir / "scenario_matrix.png", dpi=160)
     plt.close(figure)
 
-    figure, axes = plt.subplots(1, 2, figsize=(13, 5), constrained_layout=True)
-    axes[0].plot(cost_quality["total_cost_units"], cost_quality["reconciliation_rate"], "o-")
+    figure, axes = plt.subplots(1, 2, figsize=(14, 5.5), constrained_layout=True)
+    axes[0].plot(cost_quality["total_cost_units"], cost_quality["reconciliation_rate"], "o-", color="#2f6f9f", linewidth=2)
+    for _, row in cost_quality.iterrows():
+        axes[0].annotate(f"t={row['fallback_threshold']:.2f}", (row["total_cost_units"], row["reconciliation_rate"]), xytext=(5, 5), textcoords="offset points", fontsize=8)
     axes[0].set(xlabel="Total cost units", ylabel="Reconciliation rate", title="Cost-quality frontier")
     axes[0].grid(alpha=0.2)
-    for _, row in confidence_table.iterrows():
-        if row["rows"]:
-            axes[1].scatter(row["confidence_band"], row["accuracy"], s=max(20, row["rows"]), label=row["field"])
-    axes[1].set_ylim(0, 1)
-    axes[1].set(title="Confidence reliability", xlabel="Confidence band", ylabel="Observed accuracy")
-    axes[1].grid(alpha=0.2)
+    heatmap = confidence_table.pivot(index="field", columns="confidence_band", values="accuracy").reindex(columns=["low", "medium", "high"])
+    image = axes[1].imshow(heatmap.fillna(0).to_numpy(), cmap="RdYlGn", vmin=0, vmax=1, aspect="auto")
+    axes[1].set_xticks(range(len(heatmap.columns)), heatmap.columns)
+    axes[1].set_yticks(range(len(heatmap.index)), heatmap.index)
+    for row_index in range(len(heatmap.index)):
+        for col_index in range(len(heatmap.columns)):
+            value = heatmap.iloc[row_index, col_index]
+            if pd.notna(value):
+                axes[1].text(col_index, row_index, f"{value:.2f}", ha="center", va="center", fontsize=9)
+    axes[1].set_title("Confidence reliability", loc="left", fontweight="bold")
+    axes[1].set_xlabel("Reported confidence band")
+    figure.colorbar(image, ax=axes[1], fraction=0.046, pad=0.04, label="Observed accuracy")
     figure.savefig(output_dir / "operational_frontier.png", dpi=160)
     plt.close(figure)
 
