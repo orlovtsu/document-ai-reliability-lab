@@ -8,3 +8,9 @@ line-length = 120
 # since the default is never mutated. Ignoring here rather than refactoring
 # every call site.
 ignore = ["B008"]
+
+[tool.pytest.ini_options]
+# Without this, `pytest -q` invoked as a console script (as CI does) does not
+# add the repo root to sys.path, so the top-level package is unimportable in
+# tests. `python -m pytest` masks this locally by adding cwd automatically.
+pythonpath = ["."]
