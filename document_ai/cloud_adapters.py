@@ -5,8 +5,9 @@ inject a callable backend after configuring credentials and data governance outs
 this repository. Tests use deterministic mock backends.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass(frozen=True)

@@ -3,7 +3,6 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-
 FIELDS = ["document_type", "document_date", "reference_id", "total_amount", "line_count"]
 CORRUPTION_SCENARIOS = ["clean", "missing_date", "date_shift", "identifier_typo", "amount_noise", "duplicate_row", "mixed"]
 

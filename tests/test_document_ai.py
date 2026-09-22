@@ -1,14 +1,21 @@
 from fastapi.testclient import TestClient
 
 from document_ai.api import app
-from document_ai.quality import assess_batch, confidence_metrics, field_metrics
+from document_ai.cloud_adapters import (
+    AzureDocumentIntelligenceAdapter,
+    OpenAIVisionFallbackAdapter,
+)
 from document_ai.extractors import FALLBACK_EXTRACTOR, PRIMARY_EXTRACTOR
-from document_ai.cloud_adapters import AzureDocumentIntelligenceAdapter, OpenAIVisionFallbackAdapter
-from document_ai.reporting import run_cost_quality_sweep, run_scenarios
 from document_ai.pipeline import run_cascade
+from document_ai.quality import assess_batch, confidence_metrics, field_metrics
 from document_ai.repair import repair_documents
-from document_ai.synthetic import CORRUPTION_SCENARIOS, SyntheticConfig, generate_ground_truth, make_batch
-
+from document_ai.reporting import run_cost_quality_sweep, run_scenarios
+from document_ai.synthetic import (
+    CORRUPTION_SCENARIOS,
+    SyntheticConfig,
+    generate_ground_truth,
+    make_batch,
+)
 
 client = TestClient(app)
 
@@ -108,7 +115,7 @@ def test_all_corruption_scenarios_are_reproducible_and_reportable():
 
 
 def test_repair_normalizes_format_without_inventing_missing_values():
-    truth, extracted = make_batch(SyntheticConfig(seed=4, rows=20), scenario="missing_date")
+    _truth, extracted = make_batch(SyntheticConfig(seed=4, rows=20), scenario="missing_date")
     repaired = repair_documents(extracted)
     assert (repaired.loc[repaired["document_date"] == "", "document_date"] == "").all()
     assert "repair_actions" in repaired

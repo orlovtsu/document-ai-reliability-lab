@@ -2,7 +2,7 @@ from fastapi import FastAPI
 
 from .policy import QualityPolicy
 from .quality import assess_batch, batch_metrics, field_metrics
-from .schemas import BatchResponse, DocumentInput, FieldMetric
+from .schemas import BatchResponse, FieldMetric
 from .synthetic import SyntheticConfig, make_batch
 
 app = FastAPI(title="Document AI Reliability Lab", version="1.0.0")

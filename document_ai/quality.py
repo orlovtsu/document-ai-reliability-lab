@@ -29,10 +29,14 @@ def assess_row(row: pd.Series, policy: QualityPolicy = QualityPolicy()) -> Quali
         reasons.append("invalid_amount")
     subtotal = row.get("subtotal")
     tax = row.get("tax_amount")
-    if isinstance(subtotal, (int, float)) and isinstance(tax, (int, float)) and isinstance(amount, (int, float)):
-        if abs(subtotal + tax - amount) > 0.01:
-            score -= 0.3
-            reasons.append("reconciliation_failure")
+    if (
+        isinstance(subtotal, (int, float))
+        and isinstance(tax, (int, float))
+        and isinstance(amount, (int, float))
+        and abs(subtotal + tax - amount) > 0.01
+    ):
+        score -= 0.3
+        reasons.append("reconciliation_failure")
     if row.get("line_count", 0) < 1:
         score -= 0.1
         reasons.append("invalid_line_count")
@@ -67,7 +71,7 @@ def field_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> list[dict]:
                 "exact_match_rate": float(
                     (joined[f"{field}_pred"] == joined[f"{field}_true"]).mean()
                 ),
-                "evaluated_rows": int(len(joined)),
+                "evaluated_rows": len(joined),
             }
         )
     amount_match = (joined["total_amount_pred"] - joined["total_amount_true"]).abs() <= 0.01
@@ -75,7 +79,7 @@ def field_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> list[dict]:
         {
             "field": "total_amount",
             "exact_match_rate": float(amount_match.mean()),
-            "evaluated_rows": int(len(joined)),
+            "evaluated_rows": len(joined),
         }
     )
     return metrics
@@ -90,7 +94,7 @@ def batch_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> dict:
         "mean_confidence": float(
             extracted[[column for column in extracted.columns if column.startswith("confidence_")]].mean().mean()
         ) if len(extracted) else 0.0,
-        "rows": int(len(extracted)),
+        "rows": len(extracted),
         "reconciliation_rate": float(
             ((extracted["subtotal"] + extracted["tax_amount"] - extracted["total_amount"]).abs() <= 0.01).mean()
         ) if len(extracted) else 0.0,
@@ -112,7 +116,7 @@ def confidence_metrics(truth: pd.DataFrame, extracted: pd.DataFrame) -> list[dic
             records.append({
                 "field": field,
                 "confidence_band": str(band),
-                "rows": int(len(group)),
+                "rows": len(group),
                 "accuracy": float(group["correct"].mean()) if len(group) else 0.0,
             })
     return records

@@ -3,9 +3,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from .policy import QualityPolicy
-from .quality import assess_batch, batch_metrics, confidence_metrics, field_metrics
 from .pipeline import run_cascade
+from .policy import QualityPolicy
+from .quality import assess_batch, batch_metrics, confidence_metrics
 from .repair import repair_documents
 from .synthetic import CORRUPTION_SCENARIOS, SyntheticConfig, make_batch
 

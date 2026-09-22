@@ -2,7 +2,6 @@ import re
 
 import pandas as pd
 
-
 _REFERENCE_RE = re.compile(r"^REF-\d{6}$")
 
 

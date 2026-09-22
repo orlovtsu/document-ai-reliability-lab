@@ -2,10 +2,10 @@ from dataclasses import dataclass
 
 import pandas as pd
 
+from .extractors import FALLBACK_EXTRACTOR, PRIMARY_EXTRACTOR
 from .policy import QualityPolicy
 from .quality import assess_batch, batch_metrics
 from .repair import repair_documents
-from .extractors import FALLBACK_EXTRACTOR, PRIMARY_EXTRACTOR
 from .synthetic import SyntheticConfig, generate_ground_truth
 
 

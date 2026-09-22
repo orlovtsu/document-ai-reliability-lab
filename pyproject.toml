@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+# B008: function calls in argument defaults are flagged by default, but this
+# codebase uses frozen (immutable) dataclasses as config objects with
+# `config: SyntheticConfig = SyntheticConfig()`-style defaults, which is safe
+# since the default is never mutated. Ignoring here rather than refactoring
+# every call site.
+ignore = ["B008"]
